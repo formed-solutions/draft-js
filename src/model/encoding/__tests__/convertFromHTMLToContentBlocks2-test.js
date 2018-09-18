@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @emails oncall+ui_infra
+ * @emails oncall+draft_js
  * @format
  */
 
@@ -60,7 +60,13 @@ const normalizeBlock = block => {
 
 const toggleExperimentalTreeDataSupport = enabled => {
   jest.doMock('gkx', () => name => {
-    return name === 'draft_tree_data_support' ? enabled : false;
+    if (name === 'draft_tree_data_support') {
+      return enabled;
+    }
+    if (name === 'draftjs_fix_paste_for_img') {
+      return true;
+    }
+    return false;
   });
 };
 
@@ -150,6 +156,13 @@ test('img with data protocol should be correctly parsed', () => {
     `<img src="${IMAGE_DATA_URL}">`,
   );
   expect(blocks.contentBlocks[0].text).toMatchSnapshot();
+});
+
+test('img with role presentation should not be rendered', () => {
+  const blocks = convertFromHTMLToContentBlocks(
+    `<img src="${IMAGE_DATA_URL}" role="presentation">`,
+  );
+  expect(blocks.contentBlocks).toMatchSnapshot();
 });
 
 test('converts nested html blocks when experimentalTreeDataSupport is enabled', () => {
@@ -279,7 +292,7 @@ test('Should preserve entities for whitespace-only content', () => {
   });
 });
 
-test('Should import recognised draft li depths', () => {
+test('Should import recognised draft li depths when nesting disabled', () => {
   const html_string = `
     <ul>
       <li class="${cx('public/DraftStyleDefault/depth0')}">depth0</li>
@@ -294,14 +307,14 @@ test('Should import recognised draft li depths', () => {
   });
 });
 
-test('Should import recognised draft li depths when nesting enabled', () => {
+test('Should *not* import recognised draft li depths when nesting enabled', () => {
   const html_string = `
     <ul>
-      <li class="${cx('public/DraftStyleDefault/depth0')}">depth0</li>
-      <li class="${cx('public/DraftStyleDefault/depth1')}">depth1</li>
-      <li class="${cx('public/DraftStyleDefault/depth2')}">depth2</li>
-      <li class="${cx('public/DraftStyleDefault/depth3')}">depth3</li>
-      <li class="${cx('public/DraftStyleDefault/depth4')}">depth4</li>
+      <li class="${cx('public/DraftStyleDefault/depth0')}">depth0-0</li>
+      <li class="${cx('public/DraftStyleDefault/depth1')}">depth0-1</li>
+      <li class="${cx('public/DraftStyleDefault/depth2')}">depth0-2</li>
+      <li class="${cx('public/DraftStyleDefault/depth3')}">depth0-3</li>
+      <li class="${cx('public/DraftStyleDefault/depth4')}">depth0-4</li>
     </ul>
   `;
   assertConvertFromHTMLToContentBlocks(html_string, {
@@ -312,6 +325,90 @@ test('Should import recognised draft li depths when nesting enabled', () => {
 test('Should preserve spacing around inline tags', () => {
   const html_string = `
     <span>Some<span> </span></span><i>stylised</i><span><span> </span></span><b>text</b>
+  `;
+  assertConvertFromHTMLToContentBlocks(html_string, {
+    experimentalTreeDataSupport: true,
+  });
+});
+
+test('Should recognized list deep nesting', () => {
+  const html_string = `
+    <ul>
+      <li>depth0-0</li>
+      <li>depth0-1</li>
+      <ul>
+        <li>depth1-0</li>
+      </ul>
+      <ol>
+        <li>depth1-1</li>
+        <ul>
+          <li>depth2-0</li>
+          <li>depth2-1</li>
+        </ul>
+      </ol>
+      <li>depth0-2</li>
+    </ul>
+    <ol>
+      <li>depth0-3</li>
+    </ol>
+  `;
+  assertConvertFromHTMLToContentBlocks(html_string, {
+    experimentalTreeDataSupport: false,
+  });
+});
+
+test('Should recognized list deep nesting when nesting enabled', () => {
+  const html_string = `
+    <ul>
+      <li>depth0-0</li>
+      <li>depth0-1</li>
+      <ul>
+        <li>depth1-0</li>
+      </ul>
+      <ol>
+        <li>depth1-1</li>
+        <ul>
+          <li>depth2-0</li>
+          <li>depth2-1</li>
+        </ul>
+      </ol>
+      <li>depth0-2</li>
+    </ul>
+    <ol>
+      <li>depth0-3</li>
+    </ol>
+  `;
+  assertConvertFromHTMLToContentBlocks(html_string, {
+    experimentalTreeDataSupport: true,
+  });
+});
+
+test('Should recognized and override html structure when having known draft-js classname with nesting disabled', () => {
+  const html_string = `
+    <ul>
+      <li class="${cx('public/DraftStyleDefault/depth0')}">depth0</li>
+      <ul>
+        <li class="${cx('public/DraftStyleDefault/depth1')}">depth1</li>
+        <li class="${cx('public/DraftStyleDefault/depth2')}">depth2</li>
+      </ul>
+      <li class="${cx('public/DraftStyleDefault/depth3')}">depth3</li>
+    </ul>
+  `;
+  assertConvertFromHTMLToContentBlocks(html_string, {
+    experimentalTreeDataSupport: false,
+  });
+});
+
+test('Should recognized and *not* override html structure when having known draft-js classname with nesting enabled', () => {
+  const html_string = `
+    <ul>
+      <li class="${cx('public/DraftStyleDefault/depth0')}">depth0-0</li>
+      <ul>
+        <li class="${cx('public/DraftStyleDefault/depth1')}">depth1-0</li>
+        <li class="${cx('public/DraftStyleDefault/depth2')}">depth1-1</li>
+      </ul>
+      <li class="${cx('public/DraftStyleDefault/depth3')}">depth0-1</li>
+    </ul>
   `;
   assertConvertFromHTMLToContentBlocks(html_string, {
     experimentalTreeDataSupport: true,

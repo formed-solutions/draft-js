@@ -6,9 +6,9 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule convertFromHTMLToContentBlocks2
  * @format
  * @flow
+ * @emails oncall+draft_js
  */
 
 'use strict';
@@ -21,14 +21,15 @@ import type {EntityMap} from 'EntityMap';
 const CharacterMetadata = require('CharacterMetadata');
 const ContentBlock = require('ContentBlock');
 const ContentBlockNode = require('ContentBlockNode');
-const DraftEntity = require('DraftEntity');
 const DefaultDraftBlockRenderMap = require('DefaultDraftBlockRenderMap');
+const DraftEntity = require('DraftEntity');
+const {List, Map, OrderedSet} = require('immutable');
+const URI = require('URI');
+
 const cx = require('cx');
 const generateRandomKey = require('generateRandomKey');
 const getSafeBodyFromHTML = require('getSafeBodyFromHTML');
 const gkx = require('gkx');
-const {List, Map, OrderedSet} = require('immutable');
-const URI = require('URI');
 
 const experimentalTreeDataSupport = gkx('draft_tree_data_support');
 
@@ -94,10 +95,10 @@ type BlockTypeMap = Map<string, string | Array<string>>;
 const buildBlockTypeMap = (
   blockRenderMap: DraftBlockRenderMap,
 ): BlockTypeMap => {
-  let blockTypeMap = {};
+  const blockTypeMap = {};
 
   blockRenderMap.mapKeys((blockType, desc) => {
-    let elements = [desc.element];
+    const elements = [desc.element];
     if (desc.aliasedElements !== undefined) {
       elements.push(...desc.aliasedElements);
     }
@@ -153,6 +154,12 @@ const isValidImage = (node: Node): boolean => {
     node.attributes.getNamedItem('src').value
   );
 };
+
+/**
+ * Determine if a nodeName is a list type, 'ul' or 'ol'
+ */
+const isListNode = (nodeName: string): boolean =>
+  nodeName === 'ul' || nodeName === 'ol';
 
 /**
  *  ContentBlockConfig is a mutable data structure that holds all
@@ -236,7 +243,7 @@ class ContentBlocksBuilder {
     this.characterList = List();
     this.blockConfigs = [];
     this.currentBlockType = 'unstyled';
-    this.currentDepth = 0;
+    this.currentDepth = -1;
     this.currentEntity = null;
     this.currentStyle = OrderedSet();
     this.currentText = '';
@@ -313,7 +320,7 @@ class ContentBlocksBuilder {
       type: this.currentBlockType,
       text: this.currentText,
       characterList: this.characterList,
-      depth: this.currentDepth,
+      depth: Math.max(0, this.currentDepth),
       parent: null,
       children: List(),
       prevSibling: null,
@@ -323,7 +330,7 @@ class ContentBlocksBuilder {
     };
     this.characterList = List();
     this.currentBlockType = 'unstyled';
-    this.currentDepth = 0;
+    this.currentDepth = -1;
     this.currentText = '';
     return block;
   }
@@ -334,13 +341,12 @@ class ContentBlocksBuilder {
    * state to enable chaining sucessive calls.
    */
   _toBlockConfigs(nodes: Array<Node>): Array<ContentBlockConfig> {
-    let blockConfigs = [];
-
+    const blockConfigs = [];
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const nodeName = node.nodeName.toLowerCase();
 
-      if (nodeName === 'body' || nodeName === 'ol' || nodeName === 'ul') {
+      if (nodeName === 'body' || isListNode(nodeName)) {
         // body, ol and ul are 'block' type nodes so create a block config
         // with the text accumulated so far (if any)
         this._trimCurrentText();
@@ -350,11 +356,16 @@ class ContentBlocksBuilder {
 
         // body, ol and ul nodes are ignored, but their children are inlined in
         // the parent block config.
+        const wasCurrentDepth = this.currentDepth;
         const wasWrapper = this.wrapper;
-        if (nodeName === 'ol' || nodeName === 'ul') {
+        if (isListNode(nodeName)) {
           this.wrapper = nodeName;
+          if (isListNode(wasWrapper)) {
+            this.currentDepth++;
+          }
         }
         blockConfigs.push(...this._toBlockConfigs(Array.from(node.childNodes)));
+        this.currentDepth = wasCurrentDepth;
         this.wrapper = wasWrapper;
         continue;
       }
@@ -380,12 +391,12 @@ class ContentBlocksBuilder {
         }
 
         if (
-          experimentalTreeDataSupport &&
+          !experimentalTreeDataSupport &&
           node instanceof HTMLElement &&
           (blockType === 'unordered-list-item' ||
             blockType === 'ordered-list-item')
         ) {
-          this.currentDepth = getListItemDepth(node);
+          this.currentDepth = getListItemDepth(node, this.currentDepth);
         }
 
         const key = generateRandomKey();
@@ -483,7 +494,7 @@ class ContentBlocksBuilder {
    */
   _addTextNode(node: Node) {
     let text = node.textContent;
-    let trimmedText = text.trim();
+    const trimmedText = text.trim();
 
     // If we are not in a pre block and the trimmed content is empty,
     // normalize to a single space.
@@ -523,11 +534,17 @@ class ContentBlocksBuilder {
       entityConfig,
     );
 
-    // The child text node cannot just have a space or return as content -
-    // we strip those out.
+    // The child text node cannot just have a space or return as content (since
+    // we strip those out), unless the image is for presentation only.
     // See https://github.com/facebook/draft-js/issues/231 for some context.
+    if (gkx('draftjs_fix_paste_for_img')) {
+      if (node.getAttribute('role') !== 'presentation') {
+        this._appendText('\ud83d\udcf7');
+      }
+    } else {
+      this._appendText('\ud83d\udcf7');
+    }
 
-    this._appendText('\ud83d\udcf7');
     this.currentEntity = null;
   }
 
@@ -612,7 +629,7 @@ class ContentBlocksBuilder {
   ) {
     const l = blockConfigs.length - 1;
     for (let i = 0; i <= l; i++) {
-      let config = blockConfigs[i];
+      const config = blockConfigs[i];
       config.parent = parent;
       config.prevSibling = i > 0 ? blockConfigs[i - 1].key : null;
       config.nextSibling = i < l ? blockConfigs[i + 1].key : null;
@@ -633,8 +650,8 @@ class ContentBlocksBuilder {
   _toFlatContentBlocks(blockConfigs: Array<ContentBlockConfig>) {
     const l = blockConfigs.length - 1;
     for (let i = 0; i <= l; i++) {
-      let config = blockConfigs[i];
-      let {text, characterList} = this._extractTextFromBlockConfigs(
+      const config = blockConfigs[i];
+      const {text, characterList} = this._extractTextFromBlockConfigs(
         config.childConfigs,
       );
       this.contentBlocks.push(
@@ -661,7 +678,7 @@ class ContentBlocksBuilder {
     let text = '';
     let characterList = List();
     for (let i = 0; i <= l; i++) {
-      let config = blockConfigs[i];
+      const config = blockConfigs[i];
       text += config.text;
       characterList = characterList.concat(config.characterList);
       /* $FlowFixMe(>=0.68.0 site=www,mobile) This comment suppresses an error
@@ -671,7 +688,7 @@ class ContentBlocksBuilder {
         text += '\n';
         characterList = characterList.push(characterList.last());
       }
-      let children = this._extractTextFromBlockConfigs(config.childConfigs);
+      const children = this._extractTextFromBlockConfigs(config.childConfigs);
       text += children.text;
       characterList = characterList.concat(children.characterList);
     }
@@ -707,7 +724,7 @@ const convertFromHTMLtoContentBlocks = (
   }
 
   // Build a BlockTypeMap out of the BlockRenderMap
-  let blockTypeMap = buildBlockTypeMap(blockRenderMap);
+  const blockTypeMap = buildBlockTypeMap(blockRenderMap);
 
   // Select the proper block type for the cases where the blockRenderMap
   // uses multiple block types for the same html tag.

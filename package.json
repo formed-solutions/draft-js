@@ -59,7 +59,7 @@
     "eslint-plugin-react": "^7.3.0",
     "eslint-plugin-relay": "^0.0.8",
     "fbjs-scripts": "^0.8.0",
-    "flow-bin": "^0.64.0",
+    "flow-bin": "^0.70.0",
     "gulp": "^3.9.0",
     "gulp-babel": "^6.1.2",
     "gulp-browserify-thin": "^0.1.5",
@@ -72,8 +72,8 @@
     "gulp-rename": "^1.2.2",
     "gulp-uglify": "^1.2.0",
     "gulp-util": "^3.0.6",
-    "jest": "^21.2.1",
-    "prettier": "1.9.1",
+    "jest": "^23.5.0",
+    "prettier": "1.13.6",
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
     "react-test-renderer": "^16.0.0",
@@ -86,7 +86,7 @@
   },
   "devEngines": {
     "node": "8.x || 9.x",
-    "npm": "2.x || 3.x || 5.x"
+    "npm": "2.x || 3.x || 5.x || 6.x"
   },
   "jest": {
     "automock": true,
@@ -102,6 +102,9 @@
     ],
     "transform": {
       ".*": "<rootDir>/scripts/jest/preprocessor.js"
+    },
+    "haste": {
+      "hasteImplModulePath": "<rootDir>/scripts/jest/hasteImpl.js"
     },
     "modulePathIgnorePatterns": [
       "<rootDir>/lib/",

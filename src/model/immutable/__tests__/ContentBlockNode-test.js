@@ -6,9 +6,9 @@
  * LICENSE file in the root directory of this source tree. An addtestional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @emails oncall+ui_infra
+ * @emails oncall+draft_js
  * @format
- * @flow
+ * @flow strict-local
  */
 
 'use strict';
@@ -18,7 +18,7 @@ jest.disableAutomock();
 const CharacterMetadata = require('CharacterMetadata');
 const ContentBlockNode = require('ContentBlockNode');
 const Immutable = require('immutable');
-const {NONE, BOLD} = require('SampleDraftInlineStyle');
+const {BOLD, NONE} = require('SampleDraftInlineStyle');
 
 const entity_KEY = 'x';
 

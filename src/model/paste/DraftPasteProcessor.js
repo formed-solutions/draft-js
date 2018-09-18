@@ -6,28 +6,28 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule DraftPasteProcessor
  * @format
  * @flow
+ * @emails oncall+draft_js
  */
 
 'use strict';
 
 import type {BlockNodeRecord} from 'BlockNodeRecord';
+import type CharacterMetadata from 'CharacterMetadata';
 import type {DraftBlockRenderMap} from 'DraftBlockRenderMap';
 import type {DraftBlockType} from 'DraftBlockType';
 import type {EntityMap} from 'EntityMap';
 
-const CharacterMetadata = require('CharacterMetadata');
 const ContentBlock = require('ContentBlock');
 const ContentBlockNode = require('ContentBlockNode');
-const Immutable = require('immutable');
 
 const convertFromHTMLtoContentBlocksClassic = require('convertFromHTMLToContentBlocks');
 const convertFromHTMLtoContentBlocksNew = require('convertFromHTMLToContentBlocks2');
 const generateRandomKey = require('generateRandomKey');
 const getSafeBodyFromHTML = require('getSafeBodyFromHTML');
 const gkx = require('gkx');
+const Immutable = require('immutable');
 const sanitizeDraftText = require('sanitizeDraftText');
 
 const {List, Repeat} = Immutable;

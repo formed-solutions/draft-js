@@ -6,17 +6,11 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule H2
- * @jsx React.DOM
  */
 
-var React = require('React');
-var Header = require('Header');
+'use strict';
 
-var H2 = React.createClass({
-  render: function() {
-    return <Header {...this.props} level={2}>{this.props.children}</Header>;
-  },
-});
-
-module.exports = H2;
+module.exports = {
+  initODS: function() {},
+  handleExtensionCausedError: function() {},
+};

@@ -1,10 +1,6 @@
 ---
 id: advanced-topics-custom-block-render-map
 title: Custom Block Rendering
-layout: docs
-category: Advanced Topics
-next: advanced-topics-block-components
-permalink: docs/advanced-topics-custom-block-render-map.html
 ---
 
 This article discusses how to customize Draft default block rendering.
@@ -146,7 +142,7 @@ const blockRenderMap = Immutable.Map({
     // element is used during paste or html conversion to auto match your component;
     // it is also retained as part of this.props.children and not stripped out
     element: 'section',
-    wrapper: MyCustomBlock,
+    wrapper: <MyCustomBlock />,
   }
 });
 

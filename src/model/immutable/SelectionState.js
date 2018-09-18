@@ -6,18 +6,18 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule SelectionState
  * @format
- * @flow
+ * @flow strict-local
+ * @emails oncall+draft_js
  */
 
 'use strict';
 
-var Immutable = require('immutable');
+const Immutable = require('immutable');
 
-var {Record} = Immutable;
+const {Record} = Immutable;
 
-var defaultRecord: {
+const defaultRecord: {
   anchorKey: string,
   anchorOffset: number,
   focusKey: string,
@@ -33,7 +33,7 @@ var defaultRecord: {
   hasFocus: false,
 };
 
-var SelectionStateRecord = Record(defaultRecord);
+const SelectionStateRecord = Record(defaultRecord);
 
 class SelectionState extends SelectionStateRecord {
   serialize(): string {
@@ -85,12 +85,12 @@ class SelectionState extends SelectionStateRecord {
    * SelectionState.
    */
   hasEdgeWithin(blockKey: string, start: number, end: number): boolean {
-    var anchorKey = this.getAnchorKey();
-    var focusKey = this.getFocusKey();
+    const anchorKey = this.getAnchorKey();
+    const focusKey = this.getFocusKey();
 
     if (anchorKey === focusKey && anchorKey === blockKey) {
-      var selectionStart = this.getStartOffset();
-      var selectionEnd = this.getEndOffset();
+      const selectionStart = this.getStartOffset();
+      const selectionEnd = this.getEndOffset();
       return start <= selectionEnd && selectionStart <= end;
     }
 
@@ -98,7 +98,7 @@ class SelectionState extends SelectionStateRecord {
       return false;
     }
 
-    var offsetToCheck =
+    const offsetToCheck =
       blockKey === anchorKey ? this.getAnchorOffset() : this.getFocusOffset();
 
     return start <= offsetToCheck && end >= offsetToCheck;

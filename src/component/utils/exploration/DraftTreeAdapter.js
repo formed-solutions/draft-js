@@ -6,9 +6,9 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule DraftTreeAdapter
  * @format
- * @flow
+ * @flow strict-local
+ * @emails oncall+draft_js
  *
  * This is unstable and not part of the public API and should not be used by
  * production systems. This file may be update/removed without notice.
@@ -17,6 +17,7 @@
 import type {RawDraftContentBlock} from 'RawDraftContentBlock';
 import type {RawDraftContentState} from 'RawDraftContentState';
 
+const generateRandomKey = require('generateRandomKey');
 const invariant = require('invariant');
 
 const traverseInDepthOrder = (
@@ -63,7 +64,7 @@ const addDepthToChildren = (block: RawDraftContentBlock) => {
  */
 const DraftTreeAdapter = {
   /**
-   * Converts from a tree raw state back to  draft raw state
+   * Converts from a tree raw state back to draft raw state
    */
   fromRawTreeStateToRawState(
     draftTreeState: RawDraftContentState,
@@ -85,6 +86,11 @@ const DraftTreeAdapter = {
       if (isListBlock(block)) {
         newBlock.depth = newBlock.depth || 0;
         addDepthToChildren(block);
+
+        // if it's a non-leaf node, we don't do anything else
+        if (block.children != null && block.children.length > 0) {
+          return;
+        }
       }
 
       delete newBlock.children;
@@ -124,12 +130,30 @@ const DraftTreeAdapter = {
         return;
       }
 
-      // update our depth cache reference path
-      lastListDepthCacheRef[depth] = treeBlock;
-
-      // if we are greater than zero we must have seen a parent already
+      // nesting
       if (depth > 0) {
-        const parent = lastListDepthCacheRef[depth - 1];
+        let parent = lastListDepthCacheRef[depth - 1];
+        if (parent == null) {
+          parent = {
+            key: generateRandomKey(),
+            text: '',
+            depth: depth - 1,
+            type: block.type,
+            children: [],
+            entityRanges: [],
+            inlineStyleRanges: [],
+          };
+
+          lastListDepthCacheRef[depth - 1] = parent;
+          if (depth === 1) {
+            // add as a root-level block
+            transformedBlocks.push(parent);
+          } else {
+            // depth > 1 => also add as previous parent's child
+            const grandparent = lastListDepthCacheRef[depth - 2];
+            grandparent.children.push(parent);
+          }
+        }
 
         invariant(parent, 'Invalid depth for RawDraftContentBlock');
 

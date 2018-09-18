@@ -6,13 +6,15 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @emails oncall+ui_infra
+ * @emails oncall+draft_js
  * @format
  */
 
 'use strict';
 
 jest.disableAutomock();
+
+jest.mock('generateRandomKey');
 
 const convertFromRawToDraftState = require('convertFromRawToDraftState');
 
